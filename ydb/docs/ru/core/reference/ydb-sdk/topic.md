@@ -79,7 +79,7 @@
   Для работы с топиками используется экземпляр драйвера {{ ydb-short-name }}, созданный с помощью `ydb.Open`. Клиент топиков доступен через метод `db.Topic()`.
 
   ```go
-  package main
+  package main 
 
   import (
     "context"
