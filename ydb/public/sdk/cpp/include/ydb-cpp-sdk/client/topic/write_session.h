@@ -135,8 +135,8 @@ struct TWriteSessionSettings : public TRequestSettings<TWriteSessionSettings> {
     FLUENT_SETTING_DEFAULT(TDuration, BatchFlushInterval, TDuration::Seconds(1));
     FLUENT_SETTING_OPTIONAL(uint64_t, BatchFlushSizeBytes);
 
-    //! Max number of logical messages packed into a single write block.
-    //! Values greater than 1 are sent as a single batch block.
+    //! Max number of logical messages packed into a single write block with KAFKA_BATCH.
+    //! Other codecs keep one message per block, regardless of this setting.
     FLUENT_SETTING_DEFAULT(uint32_t, BatchFlushMessageCount, 1);
 
     FLUENT_SETTING_DEFAULT(TDuration, ConnectTimeout, TDuration::Seconds(30));

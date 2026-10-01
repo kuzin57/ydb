@@ -1,3 +1,5 @@
+* Restricted topic write blocks with multiple messages to the Kafka batch codec to preserve message boundaries and prevent acknowledgement accounting failures with ordinary codecs. Fixed public sequence numbers in ACKs for automatically numbered sessions.
+
 * Added `Float16` and `BFloat16` vector index types.
 
 ## v3.23.0

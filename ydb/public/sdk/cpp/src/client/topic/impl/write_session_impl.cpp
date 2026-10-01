@@ -186,7 +186,10 @@ TWriteSessionImpl::TWriteSessionImpl(
     , Connections(std::move(connections))
     , DbDriverState(std::move(dbDriverState))
     , PrevToken(DbDriverState->GetCredentialsProvider() ? DbDriverState->GetCredentialsProvider()->GetAuthInfo() : "")
-    , MaxBlockMessageCount(Settings.BatchFlushMessageCount_)
+    // Only Kafka batches encode message boundaries and their logical count.
+    // With GZIP, for example, concatenating messages 1..128 produces one server
+    // message with seq_no 128, while our pending block still starts at 1.
+    , MaxBlockMessageCount(Settings.Codec_ == ECodec::KAFKA_BATCH ? Settings.BatchFlushMessageCount_ : 1)
     , InitSeqNoPromise(NThreading::NewPromise<uint64_t>())
     , WakeupInterval(
             Settings.BatchFlushInterval_ != TDuration::Zero() ?
@@ -1398,7 +1401,7 @@ TWriteSessionImpl::TProcessSrvMessageResult TWriteSessionImpl::ProcessServerMess
                     TrySignalAllAcksReceived(msgId);
 
                     acksEvent.Acks.push_back(TWriteSessionEvent::TWriteAck{
-                        msgId,
+                        GetSeqNoImpl(msgId),
                         msgWriteStatus,
                         TWriteSessionEvent::TWriteAck::TWrittenMessageDetails {
                             baseOffset + i,
