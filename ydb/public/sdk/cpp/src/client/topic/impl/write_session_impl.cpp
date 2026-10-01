@@ -2122,10 +2122,11 @@ void TWriteSessionImpl::HandleWakeUpImpl() {
         UpdateTokenIfNeededImpl();
     }
 
-    const auto flushAfter = CurrentBatch.StartedAt == TInstant::Zero()
-        ? WakeupInterval
-        : WakeupInterval - Min(Now() - CurrentBatch.StartedAt, WakeupInterval);
-    Connections->ScheduleCallback(flushAfter, std::move(callback));
+    // Keep wakeups periodic while waiting for the batch's flush deadline.
+    // For a 1s flush interval, WakeupInterval is 100ms. Subtracting the batch's
+    // age would make every callback after the first 100ms run with zero delay,
+    // repeatedly scheduling callbacks until the batch can be flushed at 1s.
+    Connections->ScheduleCallback(WakeupInterval, std::move(callback));
 }
 
 void TWriteSessionImpl::UpdateTimedCountersImpl() {
