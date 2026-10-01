@@ -208,6 +208,30 @@ namespace NTests {
             producer->Send(createTs, {});
         }
 
+        Y_UNIT_TEST_F(Send_ShouldWaitForFreshContinuationToken, TFixture) {
+            auto producer = CreateProducer();
+            InitContinuationToken(*producer);
+            EXPECT_CALL(*WriteSession, Write(_, _, _)).Times(1);
+            producer->Send(TInstant::Now(), {});
+            UNIT_ASSERT(!producer->ContinuationTokenDefined());
+
+            // The SDK withholds the next token while its buffers are full.
+            auto ready = NThreading::NewPromise();
+            EXPECT_CALL(*WriteSession, WaitEvent()).WillOnce(testing::Return(ready.GetFuture()));
+            EXPECT_CALL(*WriteSession, GetEvent(_)).Times(0);
+            producer->WaitForContinuationToken(TDuration::Zero());
+            UNIT_ASSERT(!producer->ContinuationTokenDefined());
+            UNIT_ASSERT(testing::Mock::VerifyAndClearExpectations(WriteSession.get()));
+
+            // Once the SDK grants another token, exactly one more write is allowed.
+            InitContinuationToken(*producer);
+            UNIT_ASSERT(producer->ContinuationTokenDefined());
+            EXPECT_CALL(*WriteSession, Write(_, _, _)).Times(1);
+            producer->Send(TInstant::Now(), {});
+            UNIT_ASSERT(!producer->ContinuationTokenDefined());
+            UNIT_ASSERT_VALUES_EQUAL(producer->GetCurrentMessageId(), 3u);
+        }
+
         Y_UNIT_TEST_F(WaitForContinuationToken_ShouldExtractContinuationTokenFromEvent, TFixture) {
             auto producer = CreateProducer();
             UNIT_ASSERT(!producer->ContinuationTokenDefined());

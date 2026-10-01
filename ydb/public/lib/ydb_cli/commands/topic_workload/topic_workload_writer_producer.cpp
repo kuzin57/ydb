@@ -44,7 +44,12 @@ void TTopicWorkloadWriterProducer::Send(const TInstant& createTimestamp,
         writeMessage.Tx(transaction.value());
     }
 
-    WriteSession_->Write(std::move(*ContinuationToken_), std::move(writeMessage));
+    // Each token permits one write. Moving its value does not clear TMaybe:
+    // without Clear(), ContinuationTokenDefined() would let us keep writing
+    // even when the SDK stops issuing tokens because its buffers are full.
+    auto token = std::move(*ContinuationToken_);
+    ContinuationToken_.Clear();
+    WriteSession_->Write(std::move(token), std::move(writeMessage));
 
     WRITE_LOG(Params_.Log, ELogPriority::TLOG_DEBUG,
               TStringBuilder() << "Sent message with id " << MessageId_
